@@ -1,4 +1,5 @@
 import ut
+from ut import Position, LEFT, RIGHT, NEIGHBORS_2D
 
 
 def get_input():
@@ -6,114 +7,101 @@ def get_input():
     return puzzle_input
 
 
-def get_schematic_element(schematics, row, col):
+def is_part_number(schematics:dict, pos: Position):
 
-    if row < 0 or row >= len(schematics): 
-        return '.'
-    if col < 0 or col >= len(schematics[0]):
-        return '.'
+    if not schematics.get(pos, '').isnumeric():
+        return [], 0
+
+    part_number_positions = []
+    part_number = ''
+    current_position = pos
     
-    else:
-        return schematics[row][col]
+    # step left
+    while schematics.get(current_position, '').isnumeric():
+        part_number_positions.append(current_position)
+        part_number = schematics[current_position] + part_number
+        current_position = current_position + LEFT
+
+    # step right    
+    current_position = pos + RIGHT
+    while schematics.get(current_position, '').isnumeric():
+        part_number_positions.append(current_position)
+        part_number = part_number + schematics[current_position]
+        current_position = current_position + RIGHT
 
 
-def has_neighbours(schematics, row, col, is_first = False, is_last = False):
-    for neigbhour in [(0, 1), (1, 1), (0, -1), (1, -1), (-1, 1), (-1, -1)]:
-        new_row = row + neigbhour[1]
-        new_col = col + neigbhour[0]
+    for pos in part_number_positions:
+        for neighbor in NEIGHBORS_2D:
+            n_pos = pos + neighbor
+            tile_type = schematics.get(n_pos, '.')
+            if not tile_type.isnumeric() and not tile_type == '.':
+                return part_number_positions, int(part_number)
 
-        char = get_schematic_element(schematics, new_row, new_col)
+    return [], 0
 
-        if not char == '.':
-            return True
-        
-    if is_first:
-        new_col = col - 1
 
-        char = get_schematic_element(schematics, row, new_col)
+def get_schematics():
+    puzzle_input = ut.read_file()
+    schematics = {}
+    gears = []
+    for y, line in enumerate(puzzle_input):
+        for x, element in enumerate(line):
+            schematics[Position(x, y)] = element
 
-        if not char == '.':
-            return True
+            if element == '*':
+                gears.append(Position(x, y))
 
-    if is_last:
-        new_col = col + 1
+    return schematics, gears
 
-        char = get_schematic_element(schematics, row, new_col)
 
-        if not char == '.':
-            return True
+def get_part_numbers(schematics: dict):
+
+    part_numbers = {}
+    for pos in schematics.keys():
+        part_number_positions, part_number = is_part_number(schematics=schematics, pos=pos)
+        if part_number_positions:
+            part_numbers[part_number] = part_number_positions        
+
+    return part_numbers
+
+def get_gear_ratio_sum(schematics, gears):
+
+    gear_ratio_sum = 0
     
+    for gear in gears:
 
-    return False
-                
+        part_numbers = []
+        neighbors = [gear + n_dir for n_dir in NEIGHBORS_2D]
 
-def get_gear_ratio_sum(schematics):
-    pass
+        while neighbors:
+            neighbor = neighbors.pop()
 
+            part_number_positions, part_number = is_part_number(schematics=schematics, pos=neighbor)
 
-def get_engine_part_sum(schematics):
-    sum = 0
+            if part_number_positions:
+                part_numbers.append(part_number)
+                neighbors = [item for item in neighbors if item not in part_number_positions]
+
+        if len(part_numbers) == 2:
+            gear_ratio_sum += part_numbers[0] * part_numbers[1]  
     
-    is_num = False
-    is_part_number = False
-    current_number = ''
-    is_first = True
-    is_last = False
+    return gear_ratio_sum
 
-    for row in range(len(schematics)):
-
-        if is_num and is_part_number:
-            print('part number', current_number)
-            sum += int(current_number)
-
-        is_num = False
-        is_part_number = False
-        current_number = ''
-        is_first = True
-        is_last = False
-        for col in range(len(schematics[0])):
-            char = schematics[row][col]
-            if str.isnumeric(char):
-                if not str.isnumeric(get_schematic_element(schematics, row, col + 1)):
-                    is_last = True
-                is_num = True
-                current_number += char
-                if has_neighbours(schematics, row, col, is_first, is_last):
-                    is_part_number = True
-
-                is_first = False
-
-            else:
-
-                if is_num and is_part_number:
-                    print('part number', current_number)
-                    sum += int(current_number)
-
-                is_num = False
-                is_part_number = False
-                current_number = ''
-                is_first = True
-                is_last = False
-    return sum
-
-
-
+    
 def part_one():
 
-    schematics = get_input()
-
-    print('schematics', schematics)
-
-    answer = get_engine_part_sum(schematics)
-
+    schematics, gears = get_schematics()
+    part_numbers = get_part_numbers(schematics=schematics)
+    answer = sum(part_numbers.keys())
+    print(part_numbers.keys())
     ut.print_answer(part=1, day='template', answer=answer)
 
 
 def part_two():
 
-    input = get_input()
+    schematics, gears = get_schematics()
 
-    answer = 0
+    answer = get_gear_ratio_sum(schematics=schematics, gears=gears)
     
     ut.print_answer(part=2, day='template', answer=answer)
 
